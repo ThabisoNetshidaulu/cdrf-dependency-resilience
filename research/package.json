@@ -1,0 +1,16 @@
+{
+  "name": "cdrf-research",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Data collection and analysis scripts for the Comprehensive Dependency Resilience Framework (CDRF) study",
+  "scripts": {
+    "collect": "node collect.js",
+    "analyze": "node analyze.js",
+    "cases": "node casestudies.js",
+    "diagrams": "node diagrams.js"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "jstat": "^1.9.6"
+  }
+}

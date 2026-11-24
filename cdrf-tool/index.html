@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CDRF Dependency Resilience Tool</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1f2933;--mute:#6b7280;--line:#e3e6eb;--brand:#15305d;--acc:#1d4ed8;--accept:#6b7280;--sustain:#1d4ed8;--migrate:#c2410c;--support:#7c3aed;--bad:#b91c1c;--ok:#15803d}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+header{background:var(--brand);color:#fff;padding:18px 24px}header h1{margin:0;font-size:20px}header p{margin:4px 0 0;opacity:.85;font-size:13px}
+nav{display:flex;gap:4px;padding:0 24px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{border:0;background:none;padding:12px 14px;font-size:14px;cursor:pointer;color:var(--mute);border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+main{max-width:1150px;margin:0 auto;padding:20px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+label{font-size:12px;color:var(--mute);display:block;margin-bottom:4px}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid #cfd5dd;border-radius:6px;background:#fff}
+textarea{width:100%;min-height:120px;font-family:Consolas,monospace;font-size:13px}
+button.go{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:9px 16px;cursor:pointer;font-weight:600}
+button.go:disabled{opacity:.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px}.kpi b{display:block;font-size:24px;margin-top:2px}.kpi span{font-size:12px;color:var(--mute)}
+.bar{height:8px;background:#eef0f3;border-radius:4px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%}
+.resp{display:inline-block;padding:4px 10px;border-radius:14px;color:#fff;font-weight:600;font-size:13px}
+.r-Accept{background:var(--accept)}.r-Sustain{background:var(--sustain)}.r-Migrate{background:var(--migrate)}.r-Support{background:var(--support)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}th{cursor:pointer;color:var(--mute);font-weight:600;position:sticky;top:0;background:#fff}
+.tbl{max-height:520px;overflow:auto}
+.muted{color:var(--mute);font-size:13px}.warn{color:var(--bad);font-weight:600}.good{color:var(--ok);font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:800px){.two{grid-template-columns:1fr}}
+ul.reasons{margin:8px 0 0;padding-left:18px}ul.reasons li{margin:4px 0}
+.hidden{display:none}code{background:#eef0f3;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<header><h1>CDRF: Comprehensive Dependency Resilience Framework</h1><p>Prototype decision-support tool built from an empirical study of 786 npm, PyPI and Maven packages (data collected 21 November 2026).</p></header>
+<nav id="tabs"><button data-t="assess" class="on">Assess a package</button><button data-t="portfolio">Assess a portfolio</button><button data-t="explore">Study dataset</button><button data-t="cases">Incident validation</button><button data-t="method">How scores work</button></nav>
+<main>
+<section id="assess">
+ <div class="card"><div class="row">
+  <div><label>Ecosystem</label><select id="eco"><option value="npm">npm</option><option value="pypi">PyPI</option><option value="maven">Maven</option></select></div>
+  <div style="flex:1;min-width:220px"><label>Package name (Maven: group:artifact)</label><input id="pkg" style="width:100%" placeholder="e.g. event-stream, requests, log4j:log4j" value="event-stream"></div>
+  <div><label>Ecosystem dependents (optional)</label><input id="deps" type="number" min="0" style="width:150px" placeholder="auto"></div>
+  <button class="go" id="run">Assess</button></div>
+  <p class="muted" id="hint">Live data comes from deps.dev and OSV.dev. If the package is in the study dataset, its measured number of dependent packages is used; otherwise enter it (from the registry or ecosyste.ms), or the tool falls back to the deps.dev count for the latest version, which is a lower bound.</p>
+ </div>
+ <div id="out"></div>
+</section>
+<section id="portfolio" class="hidden">
+ <div class="card"><label>Paste a package.json "dependencies" block, a requirements.txt, or one package name per line</label>
+ <textarea id="plist">{"dependencies": {"express": "^4.18.0", "request": "^2.88.0", "left-pad": "^1.3.0", "moment": "^2.29.0", "chalk": "^5.0.0"}}</textarea>
+ <div class="row" style="margin-top:10px"><div><label>Ecosystem</label><select id="peco"><option value="npm">npm</option><option value="pypi">PyPI</option><option value="maven">Maven</option></select></div><button class="go" id="prun">Assess portfolio</button><span class="muted" id="pstat"></span></div></div>
+ <div class="card"><div class="tbl"><table id="ptab"><thead><tr><th>Package</th><th>C</th><th>A</th><th>V</th><th>RRI</th><th>Response</th><th>Remediate?</th></tr></thead><tbody></tbody></table></div></div>
+</section>
+<section id="explore" class="hidden">
+ <div class="two"><div class="card"><h3 style="margin-top:0">Decision quadrant</h3><div id="quad"></div><p class="muted">Each dot is a package from the study sample. The dashed lines are the 0.5 thresholds that separate the four responses.</p></div>
+ <div class="card"><h3 style="margin-top:0">Filter</h3><div class="row"><div><label>Ecosystem</label><select id="feco"><option value="">All</option><option value="npm">npm</option><option value="pypi">PyPI</option><option value="maven">Maven</option></select></div><div><label>Response</label><select id="fresp"><option value="">All</option><option>Accept and monitor</option><option>Sustain</option><option>Migrate</option><option>Support or fork</option></select></div><div style="flex:1"><label>Search</label><input id="fq" style="width:100%"></div></div><div id="fsum" class="muted" style="margin-top:10px"></div></div></div>
+ <div class="card"><div class="tbl"><table id="etab"><thead><tr><th data-k="1">Package</th><th data-k="0">Eco</th><th data-k="2">Dependents</th><th data-k="3">C</th><th data-k="4">A</th><th data-k="5">V</th><th data-k="6">RRI</th><th data-k="7">Response</th><th data-k="8">Months since release</th></tr></thead><tbody></tbody></table></div></div>
+</section>
+<section id="cases" class="hidden"><div class="card"><h3 style="margin-top:0">Retrospective validation on historical incidents</h3><p class="muted">Each package was scored as it stood just before the incident, using only releases and advisories published before that date.</p><div class="tbl"><table id="ctab"><thead><tr><th>Package</th><th>Scored at</th><th>Incident</th><th>C</th><th>A</th><th>Response</th></tr></thead><tbody></tbody></table></div></div></section>
+<section id="method" class="hidden"><div class="card">
+<h3 style="margin-top:0">How the scores are calculated</h3>
+<p><b>C, criticality (0 to 1):</b> the package's percentile rank, within its ecosystem, of the number of packages that depend on it. This measures how far a failure could spread.</p>
+<p><b>A, abandonment likelihood (0 to 1):</b> the probability that the package stops releasing within 24 months. It comes from a logistic regression trained on 553 packages that were active in November 2024 (cross-validated AUC 0.84). Inputs: releases in the last 12 months, months since the last release, age, total versions, dependents and GitHub stars. A package that is already dormant (no release for 24 months, archived or deprecated) gets A = 1.</p>
+<p><b>V, vulnerability exposure (0 to 1):</b> 0.5 if the current version has a known advisory, plus up to 0.3 for known-vulnerable packages in its resolved dependency tree, plus up to 0.2 for its history of advisories.</p>
+<p><b>RRI, Resilience Risk Index (0 to 100):</b> 100 × C × (0.6A + 0.4V). This is impact × likelihood.</p>
+<p><b>Response:</b> high C and high A: <span class="resp r-Support">Support or fork</span>; low C and high A: <span class="resp r-Migrate">Migrate</span>; high C and low A: <span class="resp r-Sustain">Sustain</span>; low C and low A: <span class="resp r-Accept">Accept and monitor</span>. A known advisory in the current version, or in a direct dependency, adds a <b>Remediate now</b> flag whatever the quadrant.</p>
+<p><b>Version 1.1 refinements (after the expert-panel review):</b> R1: a deprecated package with high A is always <b>Migrate</b>, because deprecation usually names a successor. R2: a dormant, high-C package with no advisory history and no vulnerable dependencies is <b>Sustain</b> (watch), not Support or fork, because it may simply be finished.</p>
+<p class="muted">Limits: the scores cannot predict account takeovers of actively maintained packages (e.g. chalk in September 2025), and "dormant" does not always mean "abandoned": some packages are simply finished.</p></div></section>
+</main>
+<script src="data.js"></script>
+<script>
+const D = window.CDRF_DATA; const M = D.model; const OSVE = { npm: 'npm', pypi: 'PyPI', maven: 'Maven' }; const MONTH = 30.4375 * 864e5, YEAR = 365.25 * 864e5;
+const $ = s => document.querySelector(s); const enc = encodeURIComponent; const fx = (v, d = 2) => (v == null || isNaN(v) ? '–' : (Math.floor(+v * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d));
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b)); document.querySelectorAll('main>section').forEach(s => s.classList.toggle('hidden', s.id !== b.dataset.t)); });
+const respClass = r => 'r-' + r.split(' ')[0];
+function pctRank(eco, v) { const a = D.ref[eco]; let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < v) lo = m + 1; else hi = m; } return lo / (a.length - 1); }
+function predictA(f, eco) { const x = [Math.log1p(f.rel12), f.gap, Math.log1p(f.age), Math.log1p(f.versions), Math.log1p(f.dependents), Math.log1p(f.stars), eco === 'pypi' ? 1 : 0, eco === 'maven' ? 1 : 0]; const z = x.map((v, i) => (i < 6 ? (v - M.means[i]) / M.sds[i] : v)); const s = M.b[0] + z.reduce((a, v, i) => a + v * M.b[i + 1], 0); return 1 / (1 + Math.exp(-s)); }
+function decide(C, A) { return C >= 0.5 ? (A >= 0.5 ? 'Support or fork' : 'Sustain') : (A >= 0.5 ? 'Migrate' : 'Accept and monitor'); }
+const getJ = async (u, o) => { const r = await fetch(u, o); if (!r.ok) throw new Error(r.status + ' ' + u.split('/').slice(-2).join('/')); return r.json(); };
+async function assess(eco, name, depOverride) {
+  const base = `https://api.deps.dev/v3/systems/${eco}/packages/${enc(name)}`;
+  const info = await getJ(base);
+  const vs = info.versions.filter(v => v.publishedAt); const ts = vs.map(v => new Date(v.publishedAt)).sort((a, b) => a - b); const now = new Date();
+  const def = info.versions.find(v => v.isDefault) || info.versions[info.versions.length - 1]; const ver = def.versionKey.version;
+  const vurl = `${base}/versions/${enc(ver)}`;
+  const [vinfo, graph, dd] = await Promise.all([getJ(vurl), getJ(vurl + ':dependencies').catch(() => ({ nodes: [] })), getJ(`https://api.deps.dev/v3alpha/systems/${eco}/packages/${enc(name)}/versions/${enc(ver)}:dependents`).catch(() => null)]);
+  let stars = 0, archived = false; const proj = (vinfo.relatedProjects || [])[0];
+  if (proj) { try { const pj = await getJ(`https://api.deps.dev/v3/projects/${enc(proj.projectKey.id)}`); stars = pj.starsCount || 0; } catch (e) { } }
+  const hist = await getJ('https://api.osv.dev/v1/query', { method: 'POST', body: JSON.stringify({ package: { name, ecosystem: OSVE[eco] } }) }).catch(() => ({}));
+  const histV = (hist.vulns || []).filter(v => !v.withdrawn);
+  const nodes = (graph.nodes || []).slice(1); let vulnNodes = [];
+  if (nodes.length) { const qb = await getJ('https://api.osv.dev/v1/querybatch', { method: 'POST', body: JSON.stringify({ queries: nodes.slice(0, 1000).map(n => ({ package: { name: n.versionKey.name, ecosystem: OSVE[eco] }, version: n.versionKey.version })) }) }).catch(() => ({ results: [] })); vulnNodes = (qb.results || []).map((r, i) => ({ n: nodes[i], ids: (r.vulns || []).map(v => v.id) })).filter(x => x.ids.length); }
+  const inStudy = D.rows.find(r => r[0] === eco && r[1].toLowerCase() === name.toLowerCase());
+  const depSource = depOverride != null ? 'entered by you' : inStudy ? 'study dataset (ecosyste.ms)' : 'deps.dev, latest version only (lower bound)';
+  const dependents = depOverride != null ? depOverride : inStudy ? inStudy[2] : (dd ? dd.dependentCount : 0);
+  const last = ts[ts.length - 1]; const gap = (now - last) / MONTH; const rel12 = ts.filter(t => t > new Date(now - 12 * MONTH)).length;
+  const deprecated = !!def.isDeprecated; const dormant = gap > 24 || deprecated;
+  const f = { rel12, gap, age: (now - ts[0]) / YEAR, versions: ts.length, dependents, stars };
+  const A = dormant ? 1 : predictA(f, eco); const C = pctRank(eco, dependents);
+  const curAdv = (vinfo.advisoryKeys || []).length; const directVuln = vulnNodes.filter(x => x.n.relation === 'DIRECT').length;
+  const V = Math.min(1, 0.5 * (curAdv > 0 ? 1 : 0) + 0.3 * Math.min(1, vulnNodes.length / 3) + 0.2 * Math.min(1, histV.length / 5));
+  const RRI = 100 * C * (0.6 * A + 0.4 * V); let resp = decide(C, A);
+  // CDRF v1.1 refinements after the expert-panel review
+  if (deprecated && A >= 0.5) resp = 'Migrate'; else if (resp === 'Support or fork' && dormant && curAdv === 0 && vulnNodes.length === 0 && histV.length === 0) resp = 'Sustain';
+  const depth = (() => { const g = graph.nodes || []; if (!g.length) return 0; const adj = g.map(() => []); (graph.edges || []).forEach(e => adj[e.fromNode || 0].push(e.toNode || 0)); const d = g.map(() => -1); d[0] = 0; const q = [0]; while (q.length) { const u = q.shift(); for (const v of adj[u]) if (d[v] < 0) { d[v] = d[u] + 1; q.push(v); } } return Math.max(0, ...d); })();
+  return { eco, name, ver, f, C, A, V, RRI, resp, dormant, deprecated, curAdv, histV, vulnNodes, directVuln, nodes: nodes.length, direct: nodes.filter(n => n.relation === 'DIRECT').length, depth, depSource, ddVersion: dd ? dd.dependentCount : null };
+}
+function reasons(r) {
+  const out = [];
+  out.push(`Criticality ${fx(r.C)}: ${r.f.dependents.toLocaleString()} dependent packages (${r.depSource}), placing it at the ${Math.round(r.C * 100)}th percentile of the ${r.eco} study sample.`);
+  out.push(r.dormant ? `Abandonment likelihood 1.00: ${r.deprecated ? 'the latest version is deprecated' : `no release for ${Math.round(r.f.gap)} months`}.` : `Abandonment likelihood ${fx(r.A)}: ${r.f.rel12} release(s) in the past 12 months, last release ${Math.round(r.f.gap)} month(s) ago, ${r.f.versions} versions in total.`);
+  out.push(`Vulnerability exposure ${fx(r.V)}: ${r.curAdv} advisory(ies) on the current version, ${r.vulnNodes.length} known-vulnerable package(s) in its ${r.nodes}-package resolved tree (depth ${r.depth}), ${r.histV.length} historical advisory(ies).`);
+  const advice = { 'Support or fork': 'Widely depended upon and at high risk of abandonment. Co-fund or contribute maintenance upstream (alone or with other users, via a foundation), and prepare a maintained fork or replacement as a fallback.', Migrate: 'Not central to the ecosystem but likely abandoned. Plan a replacement with a maintained alternative during normal development, before a security issue forces an emergency migration.', Sustain: 'Central and currently maintained. Keep it, sponsor or contribute to keep it healthy, and watch its maintainer activity.', 'Accept and monitor': 'Low impact and low risk. Accept it, keep versions current, and re-assess periodically.' };
+  out.push(advice[r.resp]);
+  if (r.curAdv > 0 || r.directVuln > 0) out.push('Remediate now: a known advisory affects the current version or a direct dependency. Upgrade or patch whatever the quadrant.');
+  return out;
+}
+function render(r) {
+  const bar = (v, c) => `<div class="bar"><i style="width:${Math.min(100, v * 100)}%;background:${c}"></i></div>`;
+  return `<div class="card"><div class="row" style="justify-content:space-between"><div><h2 style="margin:0">${r.name} <span class="muted">${r.eco} ${r.ver}</span></h2></div><span class="resp ${respClass(r.resp)}">${r.resp}</span></div>
+  <div class="grid" style="margin-top:14px"><div class="kpi"><span>Criticality C</span><b>${fx(r.C)}</b>${bar(r.C, '#15305d')}</div><div class="kpi"><span>Abandonment likelihood A</span><b>${fx(r.A)}</b>${bar(r.A, '#c2410c')}</div><div class="kpi"><span>Vulnerability exposure V</span><b>${fx(r.V)}</b>${bar(r.V, '#b91c1c')}</div><div class="kpi"><span>Resilience Risk Index</span><b>${fx(r.RRI, 1)}</b>${bar(r.RRI / 100, '#7c3aed')}</div></div>
+  <ul class="reasons">${reasons(r).map(x => `<li>${x}</li>`).join('')}</ul>
+  ${r.vulnNodes.length ? `<p class="muted"><b>Vulnerable packages in the tree:</b> ${r.vulnNodes.slice(0, 12).map(x => `<code>${x.n.versionKey.name}@${x.n.versionKey.version}</code> (${x.n.relation.toLowerCase()}, ${x.ids.slice(0, 2).join(', ')})`).join('; ')}</p>` : ''}</div>`;
+}
+$('#run').onclick = async () => { const b = $('#run'); b.disabled = true; $('#out').innerHTML = '<div class="card muted">Fetching release history, dependency graph and advisories…</div>'; try { const dv = $('#deps').value; const r = await assess($('#eco').value, $('#pkg').value.trim(), dv === '' ? null : +dv); $('#out').innerHTML = render(r); } catch (e) { $('#out').innerHTML = `<div class="card warn">Could not assess this package (${e.message}). Check the name and ecosystem.</div>`; } b.disabled = false; };
+function parseList(t) { t = t.trim(); try { const j = JSON.parse(t); return Object.keys({ ...(j.dependencies || {}), ...(j.devDependencies || {}), ...(j.dependencies || j.devDependencies ? {} : j) }); } catch (e) { } return t.split(/\r?\n/).map(l => l.replace(/#.*/, '').trim().split(/[=<>~!\[; ]/)[0]).filter(Boolean); }
+$('#prun').onclick = async () => { const names = parseList($('#plist').value).slice(0, 40); const eco = $('#peco').value; const tb = $('#ptab tbody'); tb.innerHTML = ''; const res = []; for (let i = 0; i < names.length; i++) { $('#pstat').textContent = `Assessing ${i + 1} of ${names.length}: ${names[i]}`; try { res.push(await assess(eco, names[i], null)); } catch (e) { res.push({ name: names[i], err: e.message }); } res.sort((a, b) => (b.RRI || -1) - (a.RRI || -1)); tb.innerHTML = res.map(r => r.err ? `<tr><td>${r.name}</td><td colspan="6" class="muted">not found</td></tr>` : `<tr><td><b>${r.name}</b></td><td>${fx(r.C)}</td><td>${fx(r.A)}</td><td>${fx(r.V)}</td><td><b>${fx(r.RRI, 1)}</b></td><td><span class="resp ${respClass(r.resp)}">${r.resp}</span></td><td>${r.curAdv > 0 || r.directVuln > 0 ? '<span class="warn">Yes</span>' : 'No'}</td></tr>`).join(''); } $('#pstat').textContent = `Done: ${names.length} packages, sorted by Resilience Risk Index.`; };
+// Explorer
+let sortK = 6, sortD = -1;
+function drawExplorer() { const e = $('#feco').value, rp = $('#fresp').value, q = $('#fq').value.toLowerCase(); const rows = D.rows.filter(r => (!e || r[0] === e) && (!rp || r[7] === rp) && (!q || r[1].toLowerCase().includes(q))).sort((a, b) => (a[sortK] > b[sortK] ? 1 : -1) * sortD); $('#etab tbody').innerHTML = rows.slice(0, 400).map(r => `<tr><td>${r[1]}</td><td>${r[0]}</td><td>${r[2].toLocaleString()}</td><td>${fx(r[3])}</td><td>${fx(r[4])}</td><td>${fx(r[5])}</td><td><b>${fx(r[6], 1)}</b></td><td><span class="resp ${respClass(r[7])}">${r[7]}</span></td><td>${r[8]}</td></tr>`).join(''); $('#fsum').textContent = `${rows.length} packages shown` + (rows.length > 400 ? ' (first 400 rows listed)' : ''); quad(rows); }
+function quad(rows) { const w = 460, h = 360, m = 36; const X = v => m + v * (w - 2 * m), Y = v => h - m - v * (h - 2 * m); const col = { 'Accept and monitor': '#6b7280', Sustain: '#1d4ed8', Migrate: '#c2410c', 'Support or fork': '#7c3aed' }; let s = `<svg viewBox="0 0 ${w} ${h}" width="100%"><rect x="${m}" y="${m}" width="${w - 2 * m}" height="${h - 2 * m}" fill="#fafbfc" stroke="#e3e6eb"/><line x1="${X(.5)}" x2="${X(.5)}" y1="${Y(0)}" y2="${Y(1)}" stroke="#1f2933" stroke-dasharray="4 4"/><line x1="${X(0)}" x2="${X(1)}" y1="${Y(.5)}" y2="${Y(.5)}" stroke="#1f2933" stroke-dasharray="4 4"/>`; rows.forEach(r => s += `<circle cx="${X(r[3])}" cy="${Y(r[4])}" r="3" fill="${col[r[7]]}" fill-opacity=".6"><title>${r[1]} (${r[0]}) RRI ${fx(r[6], 1)}</title></circle>`); s += `<text x="${w / 2}" y="${h - 6}" text-anchor="middle" font-size="11" fill="#6b7280">Criticality C</text><text x="10" y="${h / 2}" font-size="11" fill="#6b7280" transform="rotate(-90 10 ${h / 2})" text-anchor="middle">Abandonment likelihood A</text></svg>`; $('#quad').innerHTML = s; }
+['#feco', '#fresp'].forEach(s => $(s).onchange = drawExplorer); $('#fq').oninput = drawExplorer; document.querySelectorAll('#etab th').forEach(th => th.onclick = () => { const k = +th.dataset.k; sortD = sortK === k ? -sortD : -1; sortK = k; drawExplorer(); }); drawExplorer();
+$('#ctab tbody').innerHTML = D.cases.map(c => `<tr><td><b>${c.name}</b><br><span class="muted">${c.eco}</span></td><td>${c.cut}</td><td>${c.incident}</td><td>${c.C == null ? '–' : fx(c.C)}</td><td>${fx(c.A)}</td><td>${c.resp}</td></tr>`).join('');
+// URL parameters (used for screenshots and sharing): ?tab=portfolio&eco=maven&pkg=log4j:log4j&run=1
+(() => { const q = new URLSearchParams(location.search); if (q.get('eco')) { $('#eco').value = q.get('eco'); $('#peco').value = q.get('eco'); } if (q.get('pkg')) $('#pkg').value = q.get('pkg'); if (q.get('tab')) document.querySelector(`#tabs button[data-t="${q.get('tab')}"]`).click(); if (q.get('run')) (q.get('tab') === 'portfolio' ? $('#prun') : $('#run')).click(); })();
+</script>
+</body>
+</html>
