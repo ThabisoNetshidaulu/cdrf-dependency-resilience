@@ -50,7 +50,7 @@ npm run cases       # incident back-testing -> results/casestudies.json
 npm run diagrams    # conceptual diagrams
 ```
 
-The sample is seeded (seed 20260720), so `collect.js` reproduces the same packages. The live services change over time, however, so a new run reflects the data on the day it runs. The study data was collected on 21 November 2026.
+The sample is seeded (seed 20260720), so `collect.js` reproduces the same packages. The live services change over time, however, so a new run reflects the data on the day it runs. The study data snapshot was taken in November 2026.
 
 ## Data sources
 

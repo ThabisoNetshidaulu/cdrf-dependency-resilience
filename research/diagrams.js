@@ -45,7 +45,7 @@ const defs = `<defs><marker id="ah" markerWidth="10" markerHeight="8" refX="9" r
   s += box(710, 90, 130, 110, '#fef2f2', '#b91c1c', ['OSV.dev', 'advisories for', 'packages and', 'tree nodes'], { lh: 17 });
   s += box(870, 90, 115, 110, '#f0fdf4', '#15803d', ['Cleaning', 'spam removed', 'n = 786'], { lh: 17 });
   s += arrow(210, 145, 248, 145) + arrow(440, 145, 478, 145) + arrow(670, 145, 708, 145) + arrow(840, 145, 868, 145);
-  s += `<text x="${w / 2}" y="250" text-anchor="middle" font-size="13" fill="#374151">All API responses cached as JSON for reproducibility; collection date 21 November 2026</text>`;
+  s += `<text x="${w / 2}" y="250" text-anchor="middle" font-size="13" fill="#374151">All API responses cached as JSON for reproducibility</text>`;
   ch.render(ch.frame(w, h, 'Data collection pipeline', s), path.join(FIG, 'd_pipeline.png'));
 }
 console.log('diagrams done');
